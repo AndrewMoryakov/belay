@@ -18,8 +18,10 @@ try { data = JSON.parse(readFileSync(0, 'utf8') || '{}'); } catch { allow(); }
 const ti = data.tool_input || {};
 const cmd = ti.command || ti.script || ti.code || '';
 
-// Remote network operations that actually break under a bad proxy.
-const NET = /\b(git\s+(push|pull|fetch|clone)|gh\s|npm\s+(i|install|ci)|pnpm\s+(i|install)|yarn(\s+install)?|pip\s+install|poetry\s+(install|add)|dotnet\s+(restore|nuget)|nuget\s|cargo\s+(build|fetch|update|publish)|go\s+(get|mod)|curl\s|wget\s)/i;
+// Remote network operations that actually break under a bad proxy. Anchored to a command
+// boundary (start / shell separator) so a tool name mentioned inside a string — e.g.
+// `echo "see curl docs"` — does not trigger a false positive.
+const NET = /(?:^|[\n;&|(])\s*(git\s+(push|pull|fetch|clone)|gh\s|npm\s+(i|install|ci)|pnpm\s+(i|install)|yarn(\s+install)?|pip\s+install|poetry\s+(install|add)|dotnet\s+(restore|nuget)|nuget\s|cargo\s+(build|fetch|update|publish)|go\s+(get|mod)|curl\s|wget\s)/i;
 if (!cmd || !NET.test(cmd)) allow();
 
 const proxied = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']

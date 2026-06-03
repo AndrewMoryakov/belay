@@ -4,13 +4,13 @@
     "name": "Andrew Moryakov",
     "email": "topazd2@gmail.com"
   },
-  "description": "Universal guardrails for coding agents (skills + hooks).",
+  "description": "A runtime safety layer for coding agents (skills + hooks).",
   "plugins": [
     {
       "name": "belay",
-      "source": ".",
+      "source": "./",
       "description": "Verified-green-before-merge, git ground-truth at session start, a critical diff reviewer, proxy-aware command hygiene.",
-      "version": "0.1.0"
+      "version": "0.1.1"
     }
   ]
 }

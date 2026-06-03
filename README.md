@@ -58,11 +58,15 @@ Hooks activate automatically. Skills appear in `/help` as `/belay:*`.
 
 ## Design notes
 
-- Hooks **never wedge the agent**: any internal error (including non-git directories) exits 0
-  and lets the tool/session proceed. `git-truth` can never break session start.
+- Hooks **fail open**: any internal error (a non-git directory, or git/node being absent) is
+  non-blocking — the tool/session proceeds and `git-truth` can never break session start. Each
+  hook body is wrapped so even an unexpected throw exits 0 and allows.
 - Git is invoked via `execFileSync` with argument arrays (no shell) — safe and free of
   cross-platform quoting pitfalls. Inspected command strings are only ever pattern-matched,
-  never executed.
+  never executed (branch names are regex-escaped before matching).
+- Smoke-tested: `node --test hooks/hooks.test.mjs` spins up throwaway git repos and exercises
+  every hook (branch / marker / paren-default / develop-default / non-git cases). Run it after
+  any change.
 - Hook output schemas vary slightly across Claude Code versions; these target recent
   versions (`permissionDecision` / `additionalContext`). If a hook ever misbehaves, it fails
   open (allows), never closed.

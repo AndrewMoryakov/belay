@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 // belay · SessionStart hook
 // Injects a compact git ground-truth snapshot into the session so the agent can
-// reconcile any memory / notes against reality up front — automating the
+// reconcile any memory/notes against reality up front — automating the
 // "are you sure that's the current state?" check. Never breaks session start:
-// any error (incl. non-git dirs) exits 0 with no output.
-//
-// Uses execFileSync (no shell) — safe + cross-platform, no quoting pitfalls.
+// any error (incl. non-git dirs) exits 0 with no output. Uses execFileSync (no shell).
 
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -23,6 +21,9 @@ function main() {
 
   const git = (...args) =>
     execFileSync('git', args, { cwd, stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' }).trim();
+  // show-ref --verify --quiet exits 0 (no stdout) if the ref exists, non-zero otherwise;
+  // git() throws on non-zero, so "didn't throw" == exists.
+  const exists = (ref) => safe(() => { git('show-ref', '--verify', '--quiet', ref); return true; }, false);
 
   // Universal: silently do nothing outside a git work tree.
   try { git('rev-parse', '--is-inside-work-tree'); } catch { return; }
@@ -30,9 +31,7 @@ function main() {
   const branch = safe(() => git('rev-parse', '--abbrev-ref', 'HEAD'), 'unknown');
   const sha = safe(() => git('rev-parse', '--short', 'HEAD'), 'unknown');
   const dirty = safe(() => git('status', '--porcelain'), '') ? 'dirty' : 'clean';
-
-  let def = safe(() => git('rev-parse', '--abbrev-ref', 'origin/HEAD').replace(/^origin\//, ''), '');
-  if (!def) def = safe(() => { git('show-ref', '--verify', '--quiet', 'refs/heads/main'); return 'main'; }, '') || 'master';
+  const def = detectDefault(git, exists);
 
   let track = '';
   const upstream = safe(() => git('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'), '');
@@ -51,7 +50,24 @@ function main() {
     ` Before trusting any memory/notes that assert a HEAD, branch, "merged" or "deployed" status, ` +
     `reconcile them against these facts (run /belay:verify-memory for a deeper check).`;
 
-  process.stdout.write(JSON.stringify({ additionalContext: ctx }));
+  // Documented SessionStart structured form. (If a CC version ignores it, the snapshot is
+  // simply absent — it can never break the session.)
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: ctx },
+  }));
+}
+
+// origin/HEAD → configured init.defaultBranch (if it exists) → first existing common name →
+// "unknown". Never guesses `master`: a ground-truth tool must not assert a default it can't see.
+function detectDefault(git, exists) {
+  const d = safe(() => git('rev-parse', '--abbrev-ref', 'origin/HEAD').replace(/^origin\//, ''), '');
+  if (d) return d;
+  const cfg = safe(() => git('config', '--get', 'init.defaultBranch'), '');
+  if (cfg && exists(`refs/heads/${cfg}`)) return cfg;
+  for (const name of ['main', 'master', 'develop', 'trunk']) {
+    if (exists(`refs/heads/${name}`)) return name;
+  }
+  return 'unknown';
 }
 
 try { main(); } catch { /* never break session start */ }

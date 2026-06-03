@@ -58,6 +58,9 @@ classic, expensive mistake.)
 - Re-check the real conclusion at step 4 even if a `gh run watch` "succeeded" — watchers can
   exit 0 on a non-success conclusion.
 - One logical change per commit; write a descriptive multi-paragraph message.
-- The companion **merge-guard** hook enforces step 4/5 passively: a `git merge`/`git push`
-  onto the default branch without a marker matching HEAD will prompt (or block, if
-  `BELAY_HARD=1`). This skill is how you produce that marker.
+- The companion **merge-guard** hook enforces step 4/5 passively: a `git merge <feature>`
+  or a push onto the default branch prompts (or blocks, if `BELAY_HARD=1`) unless the marker
+  matches the commit being promoted — the merged ref's tip for a merge, or HEAD for a push.
+  This skill is how you produce that marker. (A `--no-ff` merge mints a brand-new merge commit
+  that was never CI-verified, so pushing *it* will still prompt — expected: that commit's own
+  CI hasn't run.)
