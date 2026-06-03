@@ -1,0 +1,9 @@
+# belay — local, per-clone attestation written by /belay:ship (not shared state)
+.claude/.verified-green
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

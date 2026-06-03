@@ -1,0 +1,33 @@
+{
+  "description": "belay: git ground-truth at session start (SessionStart), merge gate + proxy hygiene before shell commands (PreToolUse).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/git-truth.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/merge-guard.mjs\"",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/proxy-doctor.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
