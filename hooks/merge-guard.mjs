@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // belay · PreToolUse(Bash|PowerShell) hook
 // Guards promotion of work onto the default branch behind a verified-green-CI marker.
-//   - default mode: ADVISORY — permissionDecision "ask".
-//   - hard mode (BELAY_HARD=1): BLOCKS (exit 2) until verified.
+//   - default: BLOCK — permissionDecision "deny" (unbypassable; the reason is fed back so the
+//     agent self-corrects). "ask" is advisory but auto-approved away in non-interactive /
+//     auto-approve sessions, so it is opt-in: BELAY_MERGE_GUARD=ask. =off disables the guard.
 // The marker (`.claude/.verified-green` = the verified-green SHA, written by /belay:ship)
 // lets the command through silently when it matches the commit being promoted:
 //   - a push to the default branch        → matched against current HEAD
@@ -23,6 +24,8 @@ function main() {
   const ti = data.tool_input || {};
   const cmd = ti.command || ti.script || ti.code || '';
   const cwd = (typeof data.cwd === 'string' && data.cwd) ? data.cwd : process.cwd();
+  const mode = (process.env.BELAY_MERGE_GUARD || 'block').toLowerCase();
+  if (['off', '0', 'false', 'no'].includes(mode)) return allow();
   if (!cmd || !/\bgit\b/.test(cmd)) return allow();
 
   const git = (...a) => {
@@ -86,14 +89,14 @@ function main() {
     `belay merge-guard: this promotes work onto the default branch \`${def}\`, but no ` +
     `verified-green-CI marker matches the commit being promoted (HEAD \`${(head || '?').slice(0, 7)}\`). ` +
     `Confirm CI conclusion == success for that SHA (e.g. \`gh run view --json conclusion\`) or run ` +
-    `/belay:ship, which writes the marker only on green.`;
+    `/belay:ship (writes the marker on green). Soften with BELAY_MERGE_GUARD=ask, or =off to disable.`;
 
-  if (process.env.BELAY_HARD === '1') {
-    process.stderr.write(reason + '\n');
-    process.exit(2); // blocking
-  }
+  // Default "deny" blocks even in auto-approve / bypass modes and feeds the reason back so the
+  // agent self-corrects. "ask" is advisory only (silently auto-approved in non-interactive
+  // sessions), hence opt-in.
+  const decision = mode === 'ask' ? 'ask' : 'deny';
   process.stdout.write(JSON.stringify({
-    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: reason },
+    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: decision, permissionDecisionReason: reason },
   }));
 }
 

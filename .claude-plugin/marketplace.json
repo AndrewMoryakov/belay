@@ -10,7 +10,7 @@
       "name": "belay",
       "source": "./",
       "description": "Verified-green-before-merge, git ground-truth at session start, a critical diff reviewer, proxy-aware command hygiene.",
-      "version": "0.1.1"
+      "version": "0.1.2"
     }
   ]
 }

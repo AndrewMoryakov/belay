@@ -26,10 +26,14 @@ agent-collaboration failure modes:
   HEAD, ahead/behind, default branch, dirty?) at the start of every session, so the agent
   reconciles memory against reality up front. Silent outside a git repo.
 - **`merge-guard`** (PreToolUse) — when a shell command would promote work onto the default
-  branch without a verified-green marker for that exact HEAD, it **asks for confirmation**
-  (advisory) — or **blocks** it when run in hard mode. The marker is produced by `ship`.
-- **`proxy-doctor`** (PreToolUse, **opt-in**) — warns before remote network ops when
-  `*_PROXY` vars are set and the command doesn't neutralize them. Off by default.
+  branch without a verified-green marker for the commit being promoted, it **blocks** it
+  (permissionDecision `deny`) and feeds the reason back so the agent self-corrects. `deny`
+  holds even in auto-approve / bypass sessions, where an advisory prompt would be silently
+  swallowed — which is exactly where an agent guardrail must work. Soften with
+  `BELAY_MERGE_GUARD=ask` (advisory) or `=off`. The marker is produced by `ship`.
+- **`proxy-doctor`** (PreToolUse, **opt-in**) — injects a non-blocking advisory note before
+  remote network ops when `*_PROXY` vars are set and the command doesn't neutralize them.
+  Off by default.
 
 ## Install
 
@@ -47,7 +51,7 @@ Hooks activate automatically. Skills appear in `/help` as `/belay:*`.
 
 | Variable | Effect |
 |---|---|
-| `BELAY_HARD=1` | `merge-guard` **blocks** unverified default-branch promotion (exit 2) instead of asking. |
+| `BELAY_MERGE_GUARD` | `merge-guard` mode: `block` (default — `deny`, holds in any permission mode), `ask` (advisory; only visible in interactive sessions), or `off` (disable). |
 | `BELAY_PROXY_GUARD=1` | Enables `proxy-doctor` (off by default). |
 
 ## Conventions

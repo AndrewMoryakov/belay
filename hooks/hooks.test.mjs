@@ -97,12 +97,12 @@ test('merge-guard: innocuous git command → allow (no output)', () => {
   } finally { rm(dir); }
 });
 
-test('merge-guard: bare push on default without marker → ask', () => {
+test('merge-guard: bare push on default without marker → deny (default)', () => {
   const dir = makeRepo();
   try {
     const r = runHook('merge-guard.mjs', { input: stdin('git push', dir) });
     const out = JSON.parse(r.stdout);
-    assert.equal(out.hookSpecificOutput.permissionDecision, 'ask');
+    assert.equal(out.hookSpecificOutput.permissionDecision, 'deny');
   } finally { rm(dir); }
 });
 
@@ -120,11 +120,11 @@ test('merge-guard: C1 — merge of a marker-verified feature → allow (silent)'
   } finally { rm(dir); }
 });
 
-test('merge-guard: merge of feature WITHOUT marker → ask', () => {
+test('merge-guard: merge of feature WITHOUT marker → deny (default)', () => {
   const dir = makeRepo({ feature: true });
   try {
     const r = runHook('merge-guard.mjs', { input: stdin('git merge feature', dir) });
-    assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'ask');
+    assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'deny');
   } finally { rm(dir); }
 });
 
@@ -156,12 +156,19 @@ test('merge-guard: M1 — deleting the default branch is not flagged as a promot
   } finally { rm(dir); }
 });
 
-test('merge-guard: BELAY_HARD=1 blocks (exit 2) without a marker', () => {
+test('merge-guard: BELAY_MERGE_GUARD=ask → advisory ask (opt-in soft mode)', () => {
   const dir = makeRepo();
   try {
-    const r = runHook('merge-guard.mjs', { input: stdin('git push', dir), env: { BELAY_HARD: '1' } });
-    assert.equal(r.status, 2);
-    assert.ok(r.stderr.includes('belay merge-guard'));
+    const r = runHook('merge-guard.mjs', { input: stdin('git push', dir), env: { BELAY_MERGE_GUARD: 'ask' } });
+    assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'ask');
+  } finally { rm(dir); }
+});
+
+test('merge-guard: BELAY_MERGE_GUARD=off → allow (disabled)', () => {
+  const dir = makeRepo();
+  try {
+    const r = runHook('merge-guard.mjs', { input: stdin('git push', dir), env: { BELAY_MERGE_GUARD: 'off' } });
+    assert.equal(r.stdout.trim(), '');
   } finally { rm(dir); }
 });
 
@@ -172,12 +179,14 @@ test('proxy-doctor: off by default → allow (no output)', () => {
   assert.equal(r.stdout.trim(), '');
 });
 
-test('proxy-doctor: opt-in + proxy + remote op → ask', () => {
+test('proxy-doctor: opt-in + proxy + remote op → non-blocking advisory note', () => {
   const r = runHook('proxy-doctor.mjs', {
     input: stdin('git push origin main'),
     env: { BELAY_PROXY_GUARD: '1', HTTPS_PROXY: 'http://p:1' },
   });
-  assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'ask');
+  const out = JSON.parse(r.stdout);
+  assert.ok(out.hookSpecificOutput.additionalContext.includes('proxy-doctor'), 'injects advisory context');
+  assert.equal(out.hookSpecificOutput.permissionDecision, undefined, 'does not gate the command');
 });
 
 test('proxy-doctor: M2 — tool name inside a string is not a false positive', () => {

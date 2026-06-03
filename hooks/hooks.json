@@ -14,7 +14,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|PowerShell",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",

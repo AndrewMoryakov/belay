@@ -31,16 +31,15 @@ if (!proxied.length) allow();
 // Already neutralised inline? (clears or overrides the proxy in the command itself)
 if (/(-c\s+https?\.proxy=|_PROXY\s*=\s*(''|""|\$null|;)|NO_PROXY|--noproxy)/i.test(cmd)) allow();
 
-const reason =
+const note =
   `belay proxy-doctor: ${proxied.join(', ')} set — this remote op may hang or fail TLS ` +
-  `behind the proxy. Clear the *_PROXY vars for this command or override inline ` +
-  `(e.g. \`git -c http.proxy= -c https.proxy= ...\`, or unset them in the shell first).`;
+  `behind the proxy. If it stalls, clear the *_PROXY vars or override inline ` +
+  `(e.g. \`git -c http.proxy= -c https.proxy= ...\`).`;
 
+// Non-blocking advisory: inject as context the agent actually sees. (A "permissionDecision":
+// "ask" would be silently auto-approved in a non-interactive / auto-approve session — invisible
+// exactly where it matters — so proxy-doctor warns rather than gates.)
 process.stdout.write(JSON.stringify({
-  hookSpecificOutput: {
-    hookEventName: 'PreToolUse',
-    permissionDecision: 'ask',
-    permissionDecisionReason: reason,
-  },
+  hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: note },
 }));
 process.exit(0);

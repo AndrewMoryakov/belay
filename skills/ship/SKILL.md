@@ -59,8 +59,8 @@ classic, expensive mistake.)
   exit 0 on a non-success conclusion.
 - One logical change per commit; write a descriptive multi-paragraph message.
 - The companion **merge-guard** hook enforces step 4/5 passively: a `git merge <feature>`
-  or a push onto the default branch prompts (or blocks, if `BELAY_HARD=1`) unless the marker
-  matches the commit being promoted — the merged ref's tip for a merge, or HEAD for a push.
-  This skill is how you produce that marker. (A `--no-ff` merge mints a brand-new merge commit
-  that was never CI-verified, so pushing *it* will still prompt — expected: that commit's own
-  CI hasn't run.)
+  or a push onto the default branch is **blocked** (`deny`; soften with `BELAY_MERGE_GUARD=ask`)
+  unless the marker matches the commit being promoted — the merged ref's tip for a merge, or
+  HEAD for a push. This skill is how you produce that marker. (A `--no-ff` merge mints a
+  brand-new merge commit that was never CI-verified, so pushing *it* is still blocked —
+  expected: that commit's own CI hasn't run.)
