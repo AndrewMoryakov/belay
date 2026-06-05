@@ -27,7 +27,12 @@ agent-collaboration failure modes:
   wrong fact or a self-defeating objective** rather than deferring. Decompresses imprecise
   direction (superlatives, mood-words), and **calibrates rigor to a dial** keyed to
   reversibility/reach/reliance (ground-before-recommend; an independent adversarial pass on
-  coupled work). The operating manual the other skills plug into.
+  coupled work). The operating method for working with the human.
+- **`first-principles`** — the **meta-layer** beneath the other skills: belay's underlying
+  purpose (close the gap between appearance and reality, priced by the cost of being wrong)
+  and how to **reason from it to derive a method** for a situation no codified rule covers —
+  and to adapt to the specific project and person. Keeps the agent a flexible reasoning
+  entity, not a checklist executor; the rules become its crystallized derivations.
 
 ### Hooks (activate automatically on install)
 - **`git-truth`** (SessionStart) — injects a compact git ground-truth snapshot (branch,
