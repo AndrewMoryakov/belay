@@ -22,6 +22,13 @@ agent-collaboration failure modes:
   before relying on them (the repeatable version of *"are you sure?"*).
 - **`critical-review`** — adversarial review of a diff/commit with a hard focus on **test
   integrity**: *would each test fail if the code were broken?*
+- **`plan-review`** — de-risk a **draft** plan *before any code*: separate the
+  spec-of-intent / executable-plan / decision-record (**drift between them is a defect**), run an
+  adversarial plan review (safety / atomicity / reversibility / ground-truth-fidelity, via
+  `critical-review`), **force every open decision closed**, and sequence the work into
+  independently-revertible stages each with its own verification gate → hand off to `ship`.
+  Supersedes `writing-plans`' lighter self-review for coupled changes; not for authoring a plan
+  (use `writing-plans`) or reviewing a diff (use `critical-review`).
 - **`collaborate`** — the human↔AI working method, as **equal colleagues**: the human sets
   priorities, the agent justifies options with their risks and trade-offs and **challenges a
   wrong fact or a self-defeating objective** rather than deferring. Decompresses imprecise
