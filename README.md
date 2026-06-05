@@ -7,7 +7,9 @@ agent-collaboration failure modes:
 - **assert-before-verify** (claiming a state/outcome without checking ground truth),
 - **merging a red branch** (trusting a watcher instead of the real CI conclusion),
 - **vacuous-green tests** (passing regardless of whether the code works),
-- **proxy-broken networking** (remote ops silently hanging behind a TLS-breaking proxy).
+- **proxy-broken networking** (remote ops silently hanging behind a TLS-breaking proxy),
+- **misreading intent** (optimizing a literal superlative, or executing mood-words as if they were specs),
+- **rigor-shaped, not rigor-graded** (a tidy decision-record laundering reasoning that was never grounded).
 
 ## What's inside
 
@@ -20,6 +22,12 @@ agent-collaboration failure modes:
   before relying on them (the repeatable version of *"are you sure?"*).
 - **`critical-review`** — adversarial review of a diff/commit with a hard focus on **test
   integrity**: *would each test fail if the code were broken?*
+- **`collaborate`** — the human↔AI working method, as **equal colleagues**: the human sets
+  priorities, the agent justifies options with their risks and trade-offs and **challenges a
+  wrong fact or a self-defeating objective** rather than deferring. Decompresses imprecise
+  direction (superlatives, mood-words), and **calibrates rigor to a dial** keyed to
+  reversibility/reach/reliance (ground-before-recommend; an independent adversarial pass on
+  coupled work). The operating manual the other skills plug into.
 
 ### Hooks (activate automatically on install)
 - **`git-truth`** (SessionStart) — injects a compact git ground-truth snapshot (branch,
