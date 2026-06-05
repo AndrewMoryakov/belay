@@ -55,8 +55,12 @@ classic, expensive mistake.)
 
 ## Notes
 
-- Re-check the real conclusion at step 4 even if a `gh run watch` "succeeded" — watchers can
-  exit 0 on a non-success conclusion.
+- The HARD GUARD gates on a **conclusion value read from `gh run view --json conclusion`** —
+  never on a *completion signal that carries no conclusion* (a `gh run watch` exit code, a
+  printed "done"). So if your poll loop in step 3 already read `--json status,conclusion`, that
+  conclusion **is** the guard — gate on it directly; a second `gh run view` is redundant. Only
+  re-query when the thing that told you the run finished was an exit code / watcher that can be
+  0 on a non-success conclusion.
 - One logical change per commit; write a descriptive multi-paragraph message.
 - The companion **merge-guard** hook enforces step 4/5 passively: a `git merge <feature>`
   or a push onto the default branch is **blocked** (`deny`; soften with `BELAY_MERGE_GUARD=ask`)
