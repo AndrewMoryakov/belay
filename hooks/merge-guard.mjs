@@ -51,7 +51,6 @@ function main() {
   // regex metacharacters ( ( ) . * | etc.), which would otherwise crash or mis-match.
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const defRe = def && def !== 'unknown' ? new RegExp(`(^|[\\s:/])${esc(def)}(\\s|$|:)`) : null;
-  const namesDefault = !!defRe && defRe.test(cmd);
 
   // Push positionals: `git push [remote] [refspec...]` — first positional is the remote.
   // A push that names a non-default refspec is NOT promoting the default branch, even
@@ -60,6 +59,12 @@ function main() {
   const pIdx = toks.indexOf('push');
   const positionals = pIdx >= 0 ? toks.slice(pIdx + 1).filter((t) => t && !t.startsWith('-')) : [];
   const refspecs = positionals.slice(1);
+
+  // "Names the default" is judged from the push REFSPECS only — never the whole command
+  // string. Testing the entire command false-positived when the default name appeared in
+  // unrelated text, e.g. a commit message in a compound `git commit -m '…main…' && git push
+  // origin feature`. A refspec like `main`, `HEAD:main`, or `feature:main` still matches.
+  const namesDefault = isPush && !!defRe && refspecs.some((r) => defRe.test(r));
 
   const mergesIntoDefault = isMerge && branch === def;
   const pushesDefault = isPush && (namesDefault || (branch === def && refspecs.length === 0));

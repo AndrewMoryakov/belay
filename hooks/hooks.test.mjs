@@ -136,6 +136,30 @@ test('merge-guard: push of a non-default ref while on default → allow (no FP)'
   } finally { rm(dir); }
 });
 
+test('merge-guard: FP — default name in a compound commit message must not flag a feature push', () => {
+  const dir = makeRepo({ feature: true });
+  try {
+    git(dir, 'checkout', 'feature');
+    // The default name ("main") appears ONLY in the commit-message text of a compound command
+    // whose push targets `feature`. Matching the default against the whole command string
+    // false-positived here; the match must be scoped to the push refspecs.
+    const cmd = "git commit -m 'refactor main loop' && git push origin feature";
+    const r = runHook('merge-guard.mjs', { input: stdin(cmd, dir) });
+    assert.equal(r.stdout.trim(), '', 'commit-message text must not trip the default-branch match');
+  } finally { rm(dir); }
+});
+
+test('merge-guard: pushing the default by name from a feature branch → deny (true positive kept)', () => {
+  const dir = makeRepo({ feature: true });
+  try {
+    git(dir, 'checkout', 'feature');
+    // The refspec genuinely names the default branch — this IS a promotion and must still fire.
+    const r = runHook('merge-guard.mjs', { input: stdin('git push origin main', dir) });
+    assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'deny',
+      'a refspec that names the default branch must still be guarded');
+  } finally { rm(dir); }
+});
+
 test('merge-guard: C2 — default branch name with parens does NOT crash', () => {
   const dir = makeRepo({ def: 'rel(1' });
   try {
