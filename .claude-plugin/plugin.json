@@ -1,7 +1,7 @@
 {
   "name": "belay",
   "description": "A runtime safety layer for coding agents — verified-green-before-merge, git ground-truth at session start, a critical diff reviewer, and proxy-aware command hygiene. Stack/CI/OS-agnostic.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": {
     "name": "Andrew Moryakov",
     "email": "topazd2@gmail.com"
