@@ -40,48 +40,57 @@ function main() {
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
   const def = detectDefault(git, gitOk);
 
-  const isPush = /\bgit\b[^\n]*\bpush\b/.test(cmd);
-  const isMerge = /\bgit\b[^\n]*\bmerge\b/.test(cmd);
-
-  // Not green-gated promotions: a branch delete, or merge control verbs.
-  if (isPush && (/(^|\s)(--delete|-d)(\s|$)/.test(cmd) || /(^|\s):\S/.test(cmd))) return allow();
-  if (isMerge && /(^|\s)--(abort|continue|quit)(\s|$)/.test(cmd)) return allow();
-
   // Escape the branch name before building a RegExp — branch names may legally contain
   // regex metacharacters ( ( ) . * | etc.), which would otherwise crash or mis-match.
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const defRe = def && def !== 'unknown' ? new RegExp(`(^|[\\s:/])${esc(def)}(\\s|$|:)`) : null;
 
-  // Push positionals: `git push [remote] [refspec...]` — first positional is the remote.
-  // A push that names a non-default refspec is NOT promoting the default branch, even
-  // when you happen to be standing on it (avoids the `git push origin feature` false-positive).
-  const toks = cmd.split(/\s+/);
-  const pIdx = toks.indexOf('push');
-  const positionals = pIdx >= 0 ? toks.slice(pIdx + 1).filter((t) => t && !t.startsWith('-')) : [];
-  const refspecs = positionals.slice(1);
-
-  // "Names the default" is judged from the push REFSPECS only — never the whole command
-  // string. Testing the entire command false-positived when the default name appeared in
-  // unrelated text, e.g. a commit message in a compound `git commit -m '…main…' && git push
-  // origin feature`. A refspec like `main`, `HEAD:main`, or `feature:main` still matches.
-  const namesDefault = isPush && !!defRe && refspecs.some((r) => defRe.test(r));
-
-  const mergesIntoDefault = isMerge && branch === def;
-  const pushesDefault = isPush && (namesDefault || (branch === def && refspecs.length === 0));
-  if (!mergesIntoDefault && !pushesDefault) return allow();
-
-  // Which SHA(s) would this command promote? Pass if the verified marker is among them.
+  // Evaluate each shell segment INDEPENDENTLY. Splitting on command separators (; && || | newline)
+  // stops tokens from one subcommand leaking into another — e.g. `git stash push … ; git checkout
+  // main` must not treat `main` as a push refspec — and lets us read each segment's own git
+  // SUBCOMMAND, so `git stash push` (subcommand `stash`) is correctly NOT a remote push.
   const head = git('rev-parse', 'HEAD');
   const promoted = new Set([head].filter(Boolean));
-  if (isMerge) {
-    // Resolve each non-flag token to a commit SHA — covers `git merge <feature>`, where the
-    // marker attests the feature tip (NOT the pre-merge HEAD the guard sees at this moment).
-    for (const tok of toks) {
-      if (!tok || tok.startsWith('-') || ['git', 'merge', 'push', 'origin'].includes(tok)) continue;
-      const sha = git('rev-parse', '--verify', '--quiet', `${tok}^{commit}`);
-      if (sha) promoted.add(sha);
+  let pushesDefault = false;
+  let mergesIntoDefault = false;
+
+  for (const seg of cmd.split(/&&|\|\||[;\n|]/)) {
+    const toks = seg.trim().split(/\s+/).filter(Boolean);
+    const gi = toks.indexOf('git');
+    if (gi < 0) continue;
+    // The git subcommand is the first non-flag token after `git` (so `git stash push` → `stash`,
+    // `git -C dir push` → `push`).
+    const sub = toks.slice(gi + 1).find((tk) => !tk.startsWith('-')) || '';
+
+    if (sub === 'push') {
+      // Push positionals: `git push [remote] [refspec...]` — first positional is the remote.
+      // A push naming a non-default refspec is NOT promoting the default (the `git push origin
+      // feature` case), even while standing on the default.
+      const pIdx = toks.indexOf('push', gi);
+      const positionals = toks.slice(pIdx + 1).filter((tk) => tk && !tk.startsWith('-'));
+      const refspecs = positionals.slice(1);
+      // A branch delete (`--delete`/`-d`, or a `:ref` refspec) is not a promotion.
+      if (/(^|\s)(--delete|-d)(\s|$)/.test(seg) || refspecs.some((r) => r.startsWith(':'))) continue;
+      const namesDefault = !!defRe && refspecs.some((r) => defRe.test(r));
+      if (namesDefault || (branch === def && refspecs.length === 0)) pushesDefault = true;
+    } else if (sub === 'merge') {
+      // Merge control verbs are not promotions.
+      if (/(^|\s)--(abort|continue|quit)(\s|$)/.test(seg)) continue;
+      if (branch === def) {
+        mergesIntoDefault = true;
+        // Resolve each merged ref to a commit SHA — the marker attests the feature tip, NOT the
+        // pre-merge HEAD the guard sees right now.
+        const mIdx = toks.indexOf('merge', gi);
+        for (const tok of toks.slice(mIdx + 1)) {
+          if (!tok || tok.startsWith('-')) continue;
+          const sha = git('rev-parse', '--verify', '--quiet', `${tok}^{commit}`);
+          if (sha) promoted.add(sha);
+        }
+      }
     }
   }
+
+  if (!mergesIntoDefault && !pushesDefault) return allow();
 
   let verified = false;
   try {

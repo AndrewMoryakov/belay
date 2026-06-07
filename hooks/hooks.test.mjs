@@ -196,6 +196,39 @@ test('merge-guard: BELAY_MERGE_GUARD=off → allow (disabled)', () => {
   } finally { rm(dir); }
 });
 
+test('merge-guard: FP — `git stash push` is not a remote push → allow', () => {
+  const dir = makeRepo();
+  try {
+    // `git stash push` shares the verb "push" but its git SUBCOMMAND is `stash`, so it must not be
+    // treated as a promotion of the default branch.
+    const r = runHook('merge-guard.mjs', { input: stdin('git stash push -m wip a.txt', dir) });
+    assert.equal(r.stdout.trim(), '', 'stash push is not a remote push');
+  } finally { rm(dir); }
+});
+
+test('merge-guard: FP — compound stash-push then checkout default → allow (no refspec leak)', () => {
+  const dir = makeRepo();
+  try {
+    // The default name "main" appears only as a `git checkout` argument in a later segment; it must
+    // not leak into the (non-existent) push refspecs of the `git stash push` segment.
+    const cmd = 'git stash push -m wip a.txt && git checkout -b feature && git checkout main && git stash pop';
+    const r = runHook('merge-guard.mjs', { input: stdin(cmd, dir) });
+    assert.equal(r.stdout.trim(), '', 'tokens from other segments must not be read as push refspecs');
+  } finally { rm(dir); }
+});
+
+test('merge-guard: compound — a real `git push origin main` segment is still guarded', () => {
+  const dir = makeRepo({ feature: true });
+  try {
+    git(dir, 'checkout', 'feature');
+    // Per-segment evaluation must keep the true positive: a genuine push of the default in any
+    // segment still fires, even alongside innocuous segments.
+    const cmd = "git add -A && git commit -m wip && git push origin main";
+    const r = runHook('merge-guard.mjs', { input: stdin(cmd, dir) });
+    assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'deny');
+  } finally { rm(dir); }
+});
+
 // ── proxy-doctor (PreToolUse, opt-in) ─────────────────────────────────────────
 
 test('proxy-doctor: off by default → allow (no output)', () => {
